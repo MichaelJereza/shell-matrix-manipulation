@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/bin/bash +x
+# matrix by Michael Jereza
 
 # get matrix
 # if no $1 then stdin
@@ -202,10 +203,10 @@ then
 		F=0
 	done < tempMatrix
 	cat tempMult
-
 	rm tempMult
 	rm tempMatrix
 	rm tempMatrix2
+	rm rotatedMatrix
 
 # ERROR 2 badcommand
 else
