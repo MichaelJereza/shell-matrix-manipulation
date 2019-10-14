@@ -1,0 +1,215 @@
+#!/bin/bash
+
+# get matrix
+# if no $1 then stdin
+function get_matrix(){
+	if [ -z $1 ]
+	then
+		input=$(cat -)
+	elif [ ! -r $1 ]
+	# ERROR 1 Unreadable
+	then
+		echo -e "UNREADABLE FILE" >&2
+		exit 1
+	else
+		input="$(cat $1)"
+	fi
+	echo -e "$input" > tempMatrix
+}
+
+# get_dims
+# matrix passed into $1
+function get_dims(){
+	dims=$(cat $1 | wc -l)
+	dims+=" $(cat $1 | head -1 | wc -w)"
+	echo -e "$dims"
+}
+
+# do_transpose
+# matrix in $1
+function do_transpose(){
+	while read line
+	do	
+	length=$(echo -e "$line" | wc -w)
+	for ((i=1;i<=$length;i++))
+		do	
+			if [ -z ${rows[$i]} ]
+			then
+				rows[$i]="$(echo -e "$line" | cut -f $i)"  	
+			else
+				rows[$i]+="\t$(echo -e "$line" | cut -f $i)"  	
+			fi
+		done		
+	done < $1
+	
+	for r in ${rows[@]}
+		do
+			if [ ! $initial ]
+			then
+				initial=false
+				echo -e "$r" > TransposeOutput
+			else
+				echo -e "$r" >> TransposeOutput
+			fi
+		done
+	cat TransposeOutput
+	rm TransposeOutput
+}
+
+# dims command
+if [ "$1" = "dims" ]
+then
+	# ERROR 3 excess argument
+	if (( "$#">"2" ))
+	then
+		echo -e "MORE THAN 2 ARGS" >&2
+		exit 3
+	fi
+	get_matrix $2
+	get_dims tempMatrix
+
+# dims end
+
+# transpose
+elif [ "$1" = "transpose" ]
+then
+	get_matrix $2
+	do_transpose tempMatrix
+
+# mean
+elif [ "$1" = "mean" ]
+then
+	get_matrix $2
+	div=0
+	while read line
+	do	
+	((div++))
+	length=$(echo -e "$line" | wc -w)
+	for ((i=1;i<=$length;i++))
+		do	
+			if [ -z ${cols[$i]} ]
+			then
+				cols[$i]="$(echo -e "$line" | cut -f $i)"  	
+			else
+				cols[$i]=$(("${cols[$i]}" + "$(echo -e "$line" | cut -f $i)"))  	
+			fi
+			
+		done		
+	done < tempMatrix
+	# each column use mean formula
+	for ((r=1;r<=$length;r++))
+		do
+		if [ $r = 1 ]
+		then
+			cols[$r]="$(( ( ${cols[$r]} + ($div / 2) * (( ${cols[$r]} > 0 ) * 2 - 1)) / $div ))"
+		else
+			cols[$r]="\t$(( ( ${cols[$r]} + ($div / 2) * (( ${cols[$r]} > 0 ) * 2 - 1)) / $div ))"
+		fi
+	done
+	for c in ${cols[@]}
+		do
+			mean+=$c
+		done	
+	echo -e "$mean" 
+
+# add
+elif [ "$1" = "add" ]
+then
+
+	# ERROR 4 No 2nd arg
+	if [ -z $3 ]
+	then
+		echo -e "NO 2ND FILE" >&2
+		exit 4
+	else
+	get_matrix $3
+	cat tempMatrix > tempMatrix2
+	get_matrix $2
+	fi
+
+	# ERROR 5 mismatch dimensions
+	if [ "$(get_dims tempMatrix)" != "$(get_dims tempMatrix2)" ]
+	then
+		echo -e "UNOPERABLE" >&2
+		exit 5
+	fi
+	while read lineA && read lineB <&5
+	do
+		length=$(echo -e "$lineA" | wc -w)
+		for ((i=1;i<=$length;i++))
+			do	
+				if [ "$i" = "1" ]
+				then
+					rows[$i]=$(("$(echo -e "$lineA" | cut -f $i)" + "$(echo -e "$lineB" | cut -f $i)"))  	
+				else
+					rows[$i]="\t$(("$(echo -e "$lineA" | cut -f $i)" + "$(echo -e "$lineB" | cut -f $i)"))"  	
+				fi
+			done	
+			echo -e ${rows[@]} >> tempAdd
+	done < tempMatrix 5<tempMatrix2
+	cat tempAdd | tr -d " "
+	rm tempAdd 
+	rm tempMatrix*
+
+# multiply
+elif [ "$1" = "multiply" ]
+then
+	# ERROR 4 No 2nd arg
+	if [ -z $3 ]
+	then
+		echo -e "NO 2ND FILE" >&2
+		exit 4
+	else
+		get_matrix $3
+		cat tempMatrix > tempMatrix2
+		get_matrix $2
+	fi
+	# ERROR 5 mismatch dimensions
+	if [ "$(cat tempMatrix2 | wc -l)" != "$(cat tempMatrix | head -1 | wc -w)" ]
+	then
+		echo -e "UNOPERABLE"
+		exit 5
+	else
+		height=$(cat tempMatrix | wc -l)
+		width=$(cat tempMatrix2 | wc -l)
+	fi
+	
+	do_transpose tempMatrix2 > rotatedMatrix
+	F=0
+	while read row
+	do
+		while read col
+		do
+			for ((i=1;i<=$width;i++))
+			do 
+				temp="$(( $(echo -e "$row" | cut -f $i) * $(echo -e "$col" | cut -f $i) ))"
+				sum="$(( $sum + $temp ))"
+
+			done
+			((F++))
+			#echo -e $F
+			#final[$F]="$sum"
+			if [ "$F" = "1" ]
+			then
+				exit+="$sum"
+			else
+				exit+="\t$sum"
+			fi
+			sum=0
+		done < rotatedMatrix
+		echo -e $exit >> tempMult
+		exit=""
+		F=0
+	done < tempMatrix
+	cat tempMult
+
+	rm tempMult
+	rm tempMatrix
+	rm tempMatrix2
+
+# ERROR 2 badcommand
+else
+	echo -e "BAD COMMAND" >&2
+	exit 2
+
+fi
