@@ -91,7 +91,7 @@ then
 			then
 				cols[$i]="$(echo -e "$line" | cut -f $i)"  	
 			else
-				cols[$i]=$(("${cols[$i]}" + "$(echo -e "$line" | cut -f $i)"))  	
+				cols[$i]=$(( ${cols[$i]} + $(echo -e "$line" | cut -f $i) ))  	
 			fi
 			
 		done		
@@ -140,9 +140,9 @@ then
 			do	
 				if [ "$i" = "1" ]
 				then
-					rows[$i]=$(("$(echo -e "$lineA" | cut -f $i)" + "$(echo -e "$lineB" | cut -f $i)"))  	
+					rows[$i]=$(( $(echo -e "$lineA" | cut -f $i) + $(echo -e "$lineB" | cut -f $i) ))  	
 				else
-					rows[$i]="\t$(("$(echo -e "$lineA" | cut -f $i)" + "$(echo -e "$lineB" | cut -f $i)"))"  	
+					rows[$i]="\t$(( $(echo -e "$lineA" | cut -f $i) + $(echo -e "$lineB" | cut -f $i) ))"  	
 				fi
 			done	
 			echo -e ${rows[@]} >> tempAdd
@@ -167,7 +167,7 @@ then
 	# ERROR 5 mismatch dimensions
 	if [ "$(cat tempMatrix2 | wc -l)" != "$(cat tempMatrix | head -1 | wc -w)" ]
 	then
-		echo -e "UNOPERABLE"
+		echo -e "UNOPERABLE" >&2
 		exit 5
 	else
 		height=$(cat tempMatrix | wc -l)
